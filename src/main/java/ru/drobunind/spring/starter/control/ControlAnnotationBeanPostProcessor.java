@@ -5,14 +5,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.BeanPostProcessor;
-import org.springframework.cglib.proxy.Enhancer;
-import org.springframework.cglib.proxy.MethodInterceptor;
-import org.springframework.cglib.proxy.MethodProxy;
 import ru.drobunind.spring.starter.control.annotation.Control;
 import ru.drobunind.spring.starter.control.annotation.ControlExclude;
 
+import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,6 +21,7 @@ public class ControlAnnotationBeanPostProcessor implements BeanPostProcessor {
 
 	private final ObjectProvider<ControlAnnotationHandler> controlHandler;
 	private final Map<String, Map<Method, AnnotationInfo>> controlledMethods = new ConcurrentHashMap<>();
+	private final Map<String, Class<?>> beans = new ConcurrentHashMap<>();
 
 	public ControlAnnotationBeanPostProcessor(ObjectProvider<ControlAnnotationHandler> controlHandler) {
 		this.controlHandler = controlHandler;
@@ -33,6 +33,7 @@ public class ControlAnnotationBeanPostProcessor implements BeanPostProcessor {
 
 	@Override
 	public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+		beans.put(beanName, bean.getClass());
 		Class<?> beanClass = bean.getClass();
 
 		Control beanAnnotation = beanClass.getAnnotation(Control.class);
@@ -66,15 +67,17 @@ public class ControlAnnotationBeanPostProcessor implements BeanPostProcessor {
 	@Override
 	public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
 		if (!controlledMethods.isEmpty() && controlledMethods.containsKey(beanName)) {
-			Enhancer enhancer = new Enhancer();
-			enhancer.setSuperclass(bean.getClass());
-			enhancer.setCallback(new ControlledMethodInterceptor(
+			var original = beans.remove(beanName);
+			return Proxy.newProxyInstance(
+					original.getClassLoader(),
+					original.getInterfaces(),
+					new ControlledMethodInterceptor(
+							bean,
 							beanName,
 							controlledMethods.remove(beanName),
 							controlHandler
 					)
 			);
-			return enhancer.create();
 		}
 		return bean;
 	}
@@ -88,35 +91,21 @@ public class ControlAnnotationBeanPostProcessor implements BeanPostProcessor {
 	public record AnnotationInfo(AnnotationLocation location, Control annotation) {
 	}
 
-	private static class ControlledMethodInterceptor implements MethodInterceptor {
+	private static class ControlledMethodInterceptor implements InvocationHandler {
+		private final Object bean;
 		private final String beanName;
 		private final Map<Method, AnnotationInfo> controlledMethods;
 		private final ObjectProvider<ControlAnnotationHandler> controlHandler;
 		private final Map<Method, String> controlIdCache = new ConcurrentHashMap<>();
 
-		private ControlledMethodInterceptor(String beanName,
+		private ControlledMethodInterceptor(Object bean,
+		                                    String beanName,
 		                                    Map<Method, AnnotationInfo> controlledMethods,
 		                                    ObjectProvider<ControlAnnotationHandler> controlHandler) {
+			this.bean = bean;
 			this.controlHandler = controlHandler;
 			this.beanName = beanName;
 			this.controlledMethods = controlledMethods;
-		}
-
-		@Override
-		public Object intercept(Object obj, Method method, Object[] args, MethodProxy proxy) throws Throwable {
-			var info = controlledMethods.get(method);
-
-			if (info == null || info.location().equals(AnnotationLocation.EXCLUDE)) {
-				return proxy.invokeSuper(obj, args);
-			}
-
-			String controlId = getControlId(method, info);
-			logger.trace("controlId for method [{}] is [{}]", method, controlId);
-			return controlHandler.getObject().invoke(
-					() -> proxy.invokeSuper(obj, args),
-					getControlId(method, info),
-					info
-			);
 		}
 
 		private String getControlId(Method method, AnnotationInfo info) {
@@ -129,6 +118,23 @@ public class ControlAnnotationBeanPostProcessor implements BeanPostProcessor {
 						m.getName() +
 						Arrays.toString(m.getParameterTypes());
 			});
+		}
+
+		@Override
+		public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+			var info = controlledMethods.get(method);
+
+			if (info == null || info.location().equals(AnnotationLocation.EXCLUDE)) {
+				return method.invoke(bean, args);
+			}
+
+			String controlId = getControlId(method, info);
+			logger.trace("controlId for method [{}] is [{}]", method, controlId);
+			return controlHandler.getObject().invoke(
+					() -> method.invoke(bean, args),
+					getControlId(method, info),
+					info
+			);
 		}
 	}
 }
