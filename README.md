@@ -22,33 +22,48 @@ A starter for controlling the number of method calls in a given time period
 </repositories>
 
 <dependencies>
-    <dependency>
-        <groupId>ru.drobunind</groupId>
-        <artifactId>control-starter</artifactId>
-        <version>0.0.1-SNAPSHOT</version>
-    </dependency>
+<dependency>
+    <groupId>ru.drobunind</groupId>
+    <artifactId>control-starter</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+</dependency>
 </dependencies>
 ```
 
 ---
 
-
 ## Usage
+
+Currently, the `@Control` annotation controls only the interface methods that the class implements.
+
+```java
+public interface Client {
+	void doRequest();
+
+	void doRequest2();
+}
+```
 
 ### Method control
 
 ```java
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 import ru.drobunind.spring.starter.control.annotation.Control;
 
 import java.util.concurrent.TimeUnit;
 
-@Service
-public class ExternalClient {
-	
+@Component
+public class ExternalClient implements Client {
+
 	@Control(value = 100, timeUnit = TimeUnit.MINUTES)
+	@Override
 	public void doRequest() {
-            // This method will be performed no more than 100 times per minute
+		// This method will be performed no more than 100 times per minute
+	}
+
+	@Override
+	public void doRequest2() {
+		// This method will be executed as usual
 	}
 }
 ```
@@ -56,18 +71,21 @@ public class ExternalClient {
 ### Class control
 
 ```java
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 import ru.drobunind.spring.starter.control.annotation.Control;
 
 import java.util.concurrent.TimeUnit;
 
 @Control(value = 100, timeUnit = TimeUnit.MINUTES)
-@Service
-public class ExternalClient {
+@Component
+public class ExternalClient implements Client {
+
+	@Override
 	public void doRequest() {
 		// This method will be performed no more than 100 times per minute
 	}
-	
+
+	@Override
 	public void doRequest2() {
 		// This method will be performed no more than 100 times per minute
 	}
@@ -77,20 +95,23 @@ public class ExternalClient {
 ### Exclude methods
 
 ```java
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 import ru.drobunind.spring.starter.control.annotation.Control;
 import ru.drobunind.spring.starter.control.annotation.ControlExclude;
 
 import java.util.concurrent.TimeUnit;
 
 @Control(value = 100, timeUnit = TimeUnit.MINUTES)
-@Service
-public class ExternalClient {
+@Component
+public class ExternalClient implements Client {
+
+	@Override
 	public void doRequest() {
 		// This method will be performed no more than 100 times per minute
 	}
-	
+
 	@ControlExclude
+	@Override
 	public void doRequest2() {
 		// This method will be executed as usual
 	}
