@@ -12,6 +12,7 @@ import ru.drobunind.spring.starter.cases.exception.ExceptionMethod;
 import ru.drobunind.spring.starter.cases.exception.ExceptionMethodImpl;
 import ru.drobunind.spring.starter.cases.exclude.ExcludeMethod;
 import ru.drobunind.spring.starter.cases.generic.AnimalClient;
+import ru.drobunind.spring.starter.cases.generic.ServiceWrapper;
 import ru.drobunind.spring.starter.cases.method.Method;
 import ru.drobunind.spring.starter.control.exception.CallsExhaustedException;
 import ru.drobunind.spring.starter.utils.TaskRunner;
@@ -25,6 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -51,6 +53,9 @@ class ControlAnnotationTest {
 	@Autowired
 	AnimalClient animalClient;
 
+	@Autowired
+	List<ServiceWrapper<?>> serviceWrappers;
+
 	@Test
 	void testClass() throws InterruptedException {
 		AtomicInteger counter = new AtomicInteger();
@@ -63,6 +68,7 @@ class ControlAnnotationTest {
 		try (TaskRunner taskRunner = new TaskRunner(10, millis)) {
 			taskRunner.run(runnables);
 			Thread.sleep(millis);
+			assertThat(taskRunner.getErrors().size()).isEqualTo(0);
 		}
 		assertEquals(ThreeMethods.CALLS, counter.get());
 	}
@@ -77,9 +83,10 @@ class ControlAnnotationTest {
 		try (TaskRunner taskRunner = new TaskRunner(10, millis)) {
 			taskRunner.run(runnables);
 			Thread.sleep(millis);
+			assertThat(taskRunner.getErrors().size()).isEqualTo(0);
+			assertEquals(ExceptionMethodImpl.CALLS, counter.get());
+			assertThrows(CallsExhaustedException.class, () -> exceptionMethod.method(counter));
 		}
-		assertEquals(ExceptionMethodImpl.CALLS, counter.get());
-		assertThrows(CallsExhaustedException.class, () -> exceptionMethod.method(counter));
 	}
 
 	@Test
@@ -123,6 +130,7 @@ class ControlAnnotationTest {
 										&& counter.get() <= calls;
 							}
 					);
+			assertThat(taskRunner.getErrors().size()).isEqualTo(0);
 		}
 	}
 
@@ -156,11 +164,13 @@ class ControlAnnotationTest {
 				() -> animalClient.fish(counter),
 				() -> animalClient.bird(counter)
 		);
-		var millis = Duration.of(AnimalClient.AMOUNT / 2, ChronoUnit.SECONDS).toMillis();
+		var millis = Duration.of(ServiceWrapper.AMOUNT / 2, ChronoUnit.SECONDS).toMillis();
 		try (TaskRunner taskRunner = new TaskRunner(10, millis)) {
 			taskRunner.run(runnables);
 			Thread.sleep(millis);
+			assertThat(taskRunner.getErrors().size()).isEqualTo(0);
 		}
-		assertEquals(AnimalClient.CALLS, counter.get());
+		assertThat(counter.get()).isLessThanOrEqualTo(AnimalClient.CALLS);
+		assertEquals(ServiceWrapper.CALLS * serviceWrappers.size(), counter.get());
 	}
 }

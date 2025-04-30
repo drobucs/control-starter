@@ -7,11 +7,9 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import ru.drobunind.spring.starter.control.annotation.Control;
 import ru.drobunind.spring.starter.control.annotation.ControlExclude;
+import ru.drobunind.spring.starter.control.utils.Reflections;
 
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.Proxy;
+import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -27,6 +25,7 @@ public class ControlAnnotationBeanPostProcessor implements BeanPostProcessor {
 		this.controlHandler = controlHandler;
 	}
 
+	@SuppressWarnings("NullableProblems")
 	@Override
 	public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
 		beans.put(beanName, bean.getClass());
@@ -39,8 +38,8 @@ public class ControlAnnotationBeanPostProcessor implements BeanPostProcessor {
 		Control beanAnnotation = beanClass.getAnnotation(Control.class);
 
 		Map<MethodKey, AnnotationInfo> annotatedMethods = new ConcurrentHashMap<>();
-		Set<MethodKey> set = Arrays.stream(bean.getClass().getInterfaces())
-				.flatMap(i -> Arrays.stream(i.getMethods()))
+		Set<MethodKey> set = Reflections.allInterfaces(beanClass).stream()
+				.flatMap(c -> Arrays.stream(c.getMethods()))
 				.map(ControlAnnotationBeanPostProcessor::toKey)
 				.collect(Collectors.toSet());
 		List<Method> publicMethods = Arrays.stream(bean.getClass().getMethods())
@@ -71,13 +70,14 @@ public class ControlAnnotationBeanPostProcessor implements BeanPostProcessor {
 		return bean;
 	}
 
+	@SuppressWarnings("NullableProblems")
 	@Override
 	public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
 		if (!controlledMethods.isEmpty() && controlledMethods.containsKey(beanName)) {
 			var original = beans.get(beanName);
 			return Proxy.newProxyInstance(
 					original.getClassLoader(),
-					original.getInterfaces(),
+					Reflections.allInterfaces(original).toArray(Class<?>[]::new),
 					new ControlledMethodInterceptor(
 							bean,
 							beanName,
@@ -133,16 +133,20 @@ public class ControlAnnotationBeanPostProcessor implements BeanPostProcessor {
 			var info = this.controlledMethods.get(mKey);
 
 			if (info == null || info.location().equals(AnnotationLocation.EXCLUDE)) {
-				return method.invoke(bean, args);
+					return method.invoke(bean, args);
 			}
 
 			String controlId = getControlId(mKey, info);
 			logger.trace("controlId for method [{}] is [{}]", method, controlId);
-			return controlHandler.getObject().invoke(
-					() -> method.invoke(bean, args),
-					getControlId(mKey, info),
-					info
-			);
+			try {
+				return controlHandler.getObject().invoke(
+						() -> method.invoke(bean, args),
+						getControlId(mKey, info),
+						info
+				);
+			} catch (InvocationTargetException e) {
+				throw e.getTargetException();
+			}
 		}
 	}
 

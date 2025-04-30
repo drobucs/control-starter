@@ -5,6 +5,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.drobunind.spring.starter.control.exception.CallsExhaustedException;
 
+import java.lang.reflect.UndeclaredThrowableException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
@@ -16,6 +18,7 @@ public class TaskRunner implements AutoCloseable {
 	private final int threads;
 	private final AtomicLong millis;
 	private final ExecutorService executor;
+	private final List<Throwable> errors = new ArrayList<>();
 
 	public TaskRunner(int threads, long millis) {
 		this.threads = threads;
@@ -40,11 +43,22 @@ public class TaskRunner implements AutoCloseable {
 			executor.submit(() -> {
 				try {
 					runnable.run();
+				} catch (UndeclaredThrowableException e) {
+					if (!(e.getCause() instanceof InterruptedException)) {
+						throw e;
+					}
 				} catch (Exception e) {
-					log.info(e.getMessage(), e);
+					synchronized (errors) {
+						errors.add(e);
+					}
+					log.error(e.getMessage(), e);
 				}
 			});
 		}
+	}
+
+	public List<Throwable> getErrors() {
+		return errors;
 	}
 
 	@Override

@@ -19,7 +19,7 @@ import static ru.drobunind.spring.starter.cases.generic.AnimalClient.CALLS;
 @Control(value = CALLS,
 		amount = AMOUNT,
 		timeUnit = TimeUnit.SECONDS,
-		strategy = @Strategy(ControlStrategy.EXCEPTION_TIMEOUT)
+		strategy = @Strategy(ControlStrategy.EXCEPTION)
 )
 @Component
 public class AnimalClientImpl implements AnimalClient {
