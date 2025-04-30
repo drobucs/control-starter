@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>ru.drobunind</groupId>
     <artifactId>control-starter</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.0.2</version>
 
     <name>control-starter</name>
     <description>Spring starter for controlling the number of method calls per given interval</description>
