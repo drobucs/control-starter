@@ -14,6 +14,7 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class ControlAnnotationBeanPostProcessor implements BeanPostProcessor {
 	private static final Logger logger = LoggerFactory.getLogger(ControlAnnotationBeanPostProcessor.class);
@@ -38,7 +39,13 @@ public class ControlAnnotationBeanPostProcessor implements BeanPostProcessor {
 		Control beanAnnotation = beanClass.getAnnotation(Control.class);
 
 		Map<MethodKey, AnnotationInfo> annotatedMethods = new ConcurrentHashMap<>();
-		List<Method> publicMethods = Arrays.stream(bean.getClass().getMethods()).toList();
+		Set<MethodKey> set = Arrays.stream(bean.getClass().getInterfaces())
+				.flatMap(i -> Arrays.stream(i.getMethods()))
+				.map(ControlAnnotationBeanPostProcessor::toKey)
+				.collect(Collectors.toSet());
+		List<Method> publicMethods = Arrays.stream(bean.getClass().getMethods())
+				.filter(m -> set.contains(toKey(m)))
+				.toList();
 
 		for (Method method : publicMethods) {
 			if (!Modifier.isPublic(method.getModifiers())) continue;

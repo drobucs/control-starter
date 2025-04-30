@@ -11,6 +11,7 @@ import ru.drobunind.spring.starter.cases.clazz.ThreeMethods;
 import ru.drobunind.spring.starter.cases.exception.ExceptionMethod;
 import ru.drobunind.spring.starter.cases.exception.ExceptionMethodImpl;
 import ru.drobunind.spring.starter.cases.exclude.ExcludeMethod;
+import ru.drobunind.spring.starter.cases.generic.AnimalClient;
 import ru.drobunind.spring.starter.cases.method.Method;
 import ru.drobunind.spring.starter.control.exception.CallsExhaustedException;
 import ru.drobunind.spring.starter.utils.TaskRunner;
@@ -46,6 +47,9 @@ class ControlAnnotationTest {
 
 	@Autowired
 	Method method;
+
+	@Autowired
+	AnimalClient animalClient;
 
 	@Test
 	void testClass() throws InterruptedException {
@@ -141,5 +145,22 @@ class ControlAnnotationTest {
 				Method.AMOUNT,
 				Method.CALLS
 		);
+	}
+
+	@Test
+	void testGeneric() throws InterruptedException {
+		AtomicInteger counter = new AtomicInteger();
+		List<Runnable> runnables = List.of(
+				() -> animalClient.cat(counter),
+				() -> animalClient.dog(counter),
+				() -> animalClient.fish(counter),
+				() -> animalClient.bird(counter)
+		);
+		var millis = Duration.of(AnimalClient.AMOUNT / 2, ChronoUnit.SECONDS).toMillis();
+		try (TaskRunner taskRunner = new TaskRunner(10, millis)) {
+			taskRunner.run(runnables);
+			Thread.sleep(millis);
+		}
+		assertEquals(AnimalClient.CALLS, counter.get());
 	}
 }
