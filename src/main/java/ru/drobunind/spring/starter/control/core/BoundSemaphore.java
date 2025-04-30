@@ -1,6 +1,7 @@
-package ru.drobunind.spring.starter.control;
+package ru.drobunind.spring.starter.control.core;
 
 
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.AbstractQueuedSynchronizer;
 
 public class BoundSemaphore extends AbstractQueuedSynchronizer {
@@ -16,6 +17,15 @@ public class BoundSemaphore extends AbstractQueuedSynchronizer {
 	public void acquire() {
 		acquireShared(1);
 	}
+
+	public boolean tryAcquire() {
+		return tryAcquireShared(1) >= 0;
+	}
+
+	public boolean tryAcquire(long timeout, TimeUnit unit) throws InterruptedException {
+		return tryAcquireSharedNanos(1, unit.toNanos(timeout));
+	}
+
 
 	public void maximize() {
 		releaseShared(bound);

@@ -17,10 +17,15 @@ public @interface Control {
 	/**
 	 * Time interval
 	 */
-	long fixedRate() default 1;
+	long amount() default 1;
 
 	/**
 	 * Units of an interval
 	 */
 	TimeUnit timeUnit() default TimeUnit.SECONDS;
+
+	/**
+	 * Strategy of control
+	 */
+	Strategy strategy() default @Strategy;
 }
