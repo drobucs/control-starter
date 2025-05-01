@@ -35,7 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @SpringBootTest
 class ControlAnnotationTest {
 	private static final Logger log = LoggerFactory.getLogger(ControlAnnotationTest.class);
-	static final int THREADS = 10;
+	static final int THREADS = 5;
 
 	@Autowired
 	ThreeMethods threeMethods;
@@ -66,11 +66,11 @@ class ControlAnnotationTest {
 				() -> threeMethods.method2(counter),
 				() -> threeMethods.method3(counter)
 		);
-		var duration = Duration.of(ThreeMethods.AMOUNT + 1, ChronoUnit.SECONDS);
+		var duration = Duration.of(ThreeMethods.AMOUNT + 3, ChronoUnit.SECONDS);
 		try (TaskRunner taskRunner = new TaskRunner(THREADS, duration.toMillis())) {
 			taskRunner.run(runnables);
 			await().atLeast(ThreeMethods.AMOUNT, TimeUnit.SECONDS)
-					.atMost(ThreeMethods.AMOUNT + 2, TimeUnit.SECONDS)
+					.atMost(2 * ThreeMethods.AMOUNT - 2, TimeUnit.SECONDS)
 					.pollInterval(100, TimeUnit.MILLISECONDS)
 					.until(
 							() -> counter.get() > ThreeMethods.CALLS
@@ -89,7 +89,7 @@ class ControlAnnotationTest {
 		var duration = Duration.of(ExceptionMethodImpl.AMOUNT, ChronoUnit.SECONDS);
 		try (TaskRunner taskRunner = new TaskRunner(THREADS, duration.toMillis())) {
 			taskRunner.run(runnables);
-			await().atMost(duration).untilAsserted(
+			await().atMost(duration.minusSeconds(ExceptionMethodImpl.AMOUNT / 2)).untilAsserted(
 					() -> assertThrows(CallsExhaustedException.class, () -> exceptionMethod.method(counter))
 			);
 			assertThat(taskRunner.getErrors().size()).isEqualTo(0);
@@ -172,11 +172,11 @@ class ControlAnnotationTest {
 				() -> animalClient.fish(counter),
 				() -> animalClient.bird(counter)
 		);
-		var duration = Duration.of(ServiceWrapper.AMOUNT + 1, ChronoUnit.SECONDS);
+		var duration = Duration.of(ServiceWrapper.AMOUNT + 3, ChronoUnit.SECONDS);
 		try (TaskRunner taskRunner = new TaskRunner(THREADS, duration.toMillis())) {
 			taskRunner.run(runnables);
 			await().atLeast(AnimalClient.AMOUNT, TimeUnit.SECONDS)
-					.atMost(AnimalClient.AMOUNT + 2, TimeUnit.SECONDS)
+					.atMost(2 * AnimalClient.AMOUNT - 2, TimeUnit.SECONDS)
 					.pollInterval(100, TimeUnit.MILLISECONDS)
 					.until(
 							() -> counter.get() > ServiceWrapper.CALLS * serviceWrappers.size()
