@@ -9,8 +9,31 @@
     <name>control-starter</name>
     <description>Spring starter for controlling the number of method calls per given interval</description>
 
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>drobucs</id>
+            <name>Daniil Drobunin</name>
+            <email>drobucs@gmail.com</email>
+        </developer>
+    </developers>
+
+    <scm>
+        <url>https://github.com/drobucs/control-starter</url>
+        <connection>scm:git:https://github.com/drobucs/control-starter.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com:drobucs/control-starter.git</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
+
     <properties>
         <java.version>21</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
     <distributionManagement>
