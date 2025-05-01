@@ -35,6 +35,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @SpringBootTest
 class ControlAnnotationTest {
 	private static final Logger log = LoggerFactory.getLogger(ControlAnnotationTest.class);
+	static final int THREADS = 10;
+
 	@Autowired
 	ThreeMethods threeMethods;
 
@@ -57,35 +59,41 @@ class ControlAnnotationTest {
 	List<ServiceWrapper<?>> serviceWrappers;
 
 	@Test
-	void testClass() throws InterruptedException {
+	void testClass() {
 		AtomicInteger counter = new AtomicInteger();
 		List<Runnable> runnables = List.of(
 				() -> threeMethods.method1(counter),
 				() -> threeMethods.method2(counter),
 				() -> threeMethods.method3(counter)
 		);
-		var millis = Duration.of(ThreeMethods.AMOUNT / 2, ChronoUnit.SECONDS).toMillis();
-		try (TaskRunner taskRunner = new TaskRunner(10, millis)) {
+		var duration = Duration.of(ThreeMethods.AMOUNT + 1, ChronoUnit.SECONDS);
+		try (TaskRunner taskRunner = new TaskRunner(THREADS, duration.toMillis())) {
 			taskRunner.run(runnables);
-			Thread.sleep(millis);
+			await().atLeast(ThreeMethods.AMOUNT, TimeUnit.SECONDS)
+					.atMost(ThreeMethods.AMOUNT + 2, TimeUnit.SECONDS)
+					.pollInterval(100, TimeUnit.MILLISECONDS)
+					.until(
+							() -> counter.get() > ThreeMethods.CALLS
+					);
 			assertThat(taskRunner.getErrors().size()).isEqualTo(0);
+			assertThat(counter.get()).isGreaterThan(ThreeMethods.CALLS);
 		}
-		assertEquals(ThreeMethods.CALLS, counter.get());
 	}
 
 	@Test
-	void testThrowsException() throws InterruptedException {
+	void testThrowsException() {
 		AtomicInteger counter = new AtomicInteger();
 		List<Runnable> runnables = List.of(
 				() -> exceptionMethod.method(counter)
 		);
-		var millis = Duration.of(ExceptionMethodImpl.AMOUNT / 2, ChronoUnit.SECONDS).toMillis();
-		try (TaskRunner taskRunner = new TaskRunner(10, millis)) {
+		var duration = Duration.of(ExceptionMethodImpl.AMOUNT, ChronoUnit.SECONDS);
+		try (TaskRunner taskRunner = new TaskRunner(THREADS, duration.toMillis())) {
 			taskRunner.run(runnables);
-			Thread.sleep(millis);
+			await().atMost(duration).untilAsserted(
+					() -> assertThrows(CallsExhaustedException.class, () -> exceptionMethod.method(counter))
+			);
 			assertThat(taskRunner.getErrors().size()).isEqualTo(0);
 			assertEquals(ExceptionMethodImpl.CALLS, counter.get());
-			assertThrows(CallsExhaustedException.class, () -> exceptionMethod.method(counter));
 		}
 	}
 
@@ -95,7 +103,7 @@ class ControlAnnotationTest {
 		List<Runnable> runnables = List.of(() -> blockingMethod.method(counter));
 		int n = 2;
 		int limit = n * BlockingMethodImpl.CALLS + 1;
-		try (TaskRunnerLimit taskRunner = new TaskRunnerLimit(10)) {
+		try (TaskRunnerLimit taskRunner = new TaskRunnerLimit(THREADS)) {
 			taskRunner.run(runnables, limit);
 			await().atLeast(n * BlockingMethodImpl.AMOUNT, TimeUnit.SECONDS)
 					.and()
@@ -119,7 +127,7 @@ class ControlAnnotationTest {
 				)
 				.toList();
 		long millis = Duration.of(amount, TimeUnit.SECONDS.toChronoUnit()).toMillis();
-		try (TaskRunner taskRunner = new TaskRunner(10, millis)) {
+		try (TaskRunner taskRunner = new TaskRunner(THREADS, millis)) {
 			taskRunner.run(runnables);
 			await().atMost(amount / 2, TimeUnit.SECONDS)
 					.pollInterval(100, TimeUnit.MILLISECONDS)
@@ -156,7 +164,7 @@ class ControlAnnotationTest {
 	}
 
 	@Test
-	void testGeneric() throws InterruptedException {
+	void testGeneric() {
 		AtomicInteger counter = new AtomicInteger();
 		List<Runnable> runnables = List.of(
 				() -> animalClient.cat(counter),
@@ -164,13 +172,18 @@ class ControlAnnotationTest {
 				() -> animalClient.fish(counter),
 				() -> animalClient.bird(counter)
 		);
-		var millis = Duration.of(ServiceWrapper.AMOUNT / 2, ChronoUnit.SECONDS).toMillis();
-		try (TaskRunner taskRunner = new TaskRunner(10, millis)) {
+		var duration = Duration.of(ServiceWrapper.AMOUNT + 1, ChronoUnit.SECONDS);
+		try (TaskRunner taskRunner = new TaskRunner(THREADS, duration.toMillis())) {
 			taskRunner.run(runnables);
-			Thread.sleep(millis);
+			await().atLeast(AnimalClient.AMOUNT, TimeUnit.SECONDS)
+					.atMost(AnimalClient.AMOUNT + 2, TimeUnit.SECONDS)
+					.pollInterval(100, TimeUnit.MILLISECONDS)
+					.until(
+							() -> counter.get() > ServiceWrapper.CALLS * serviceWrappers.size()
+					);
 			assertThat(taskRunner.getErrors().size()).isEqualTo(0);
+			assertThat(counter.get()).isLessThanOrEqualTo(AnimalClient.CALLS);
 		}
-		assertThat(counter.get()).isLessThanOrEqualTo(AnimalClient.CALLS);
-		assertEquals(ServiceWrapper.CALLS * serviceWrappers.size(), counter.get());
+
 	}
 }

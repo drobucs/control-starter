@@ -14,7 +14,11 @@ import static ru.drobunind.spring.starter.cases.clazz.ThreeMethodsImpl.CALLS;
 @Control(value = CALLS,
 		amount = AMOUNT,
 		timeUnit = TimeUnit.SECONDS,
-		strategy = @Strategy(ControlStrategy.EXCEPTION_TIMEOUT)
+		strategy = @Strategy(
+				value = ControlStrategy.EXCEPTION_TIMEOUT,
+				amount = 100,
+				timeUnit = TimeUnit.MILLISECONDS
+		)
 )
 @Component
 public class ThreeMethodsImpl implements ThreeMethods {
