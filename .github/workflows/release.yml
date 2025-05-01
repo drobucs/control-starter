@@ -8,21 +8,29 @@ on:
 jobs:
     create-release:
         runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            packages: write
         steps:
-            - uses: actions/checkout@v4
+            -   uses: actions/checkout@v4
 
-            - name: Get version from tag
-              id: tag-version
-              run: |
-                  echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+            -   name: Get version from tag
+                id: tag-version
+                run: |
+                    echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-            - name: Create Release
-              uses: actions/create-release@v1
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              with:
-                  tag_name: ${{ github.ref }}
-                  release_name: Release ${{ steps.tag-version.outputs.version }}
-                  body: "Automatic release for version ${{ steps.tag-version.outputs.version }}"
-                  draft: false
-                  prerelease: false
+            -   name: Debug outputs
+                run: |
+                    echo "Tag version: ${{ steps.tag-version.outputs.version }}"
+                    echo "GitHub ref: ${{ github.ref }}"
+
+            -   name: Create Release
+                uses: actions/create-release@v1
+                env:
+                    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                with:
+                    tag_name: v${{ steps.tag-version.outputs.version }}
+                    release_name: Release ${{ steps.tag-version.outputs.version }}
+                    body: "Automatic release for version ${{ steps.tag-version.outputs.version }}"
+                    draft: false
+                    prerelease: false
