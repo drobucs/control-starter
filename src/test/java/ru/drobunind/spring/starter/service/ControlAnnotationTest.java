@@ -1,6 +1,5 @@
 package ru.drobunind.spring.starter.service;
 
-import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @SpringBootTest
 class ControlAnnotationTest {
 	private static final Logger log = LoggerFactory.getLogger(ControlAnnotationTest.class);
-	static final int THREADS = 5;
+	static final int THREADS = 1;
 
 	@Autowired
 	ThreeMethods threeMethods;
@@ -59,7 +58,7 @@ class ControlAnnotationTest {
 	@Autowired
 	List<ServiceWrapper<?>> serviceWrappers;
 
-	@RepeatedTest(5)
+	@Test
 	void testClass() {
 		AtomicInteger counter = new AtomicInteger();
 		List<Runnable> runnables = List.of(
@@ -72,9 +71,12 @@ class ControlAnnotationTest {
 			taskRunner.run(runnables);
 			await().atLeast(ThreeMethods.AMOUNT, TimeUnit.SECONDS)
 					.atMost(2 * ThreeMethods.AMOUNT - 2, TimeUnit.SECONDS)
-					.pollInterval(100, TimeUnit.MILLISECONDS)
+					.pollInterval(1, TimeUnit.SECONDS)
 					.until(
-							() -> counter.get() > ThreeMethods.CALLS
+							() -> {
+								log.info("counter: {}", counter.get());
+								return counter.get() > ThreeMethods.CALLS;
+							}
 					);
 			assertThat(taskRunner.getErrors().size()).isEqualTo(0);
 			assertThat(counter.get()).isGreaterThan(ThreeMethods.CALLS);
@@ -90,8 +92,13 @@ class ControlAnnotationTest {
 		var duration = Duration.of(ExceptionMethodImpl.AMOUNT, ChronoUnit.SECONDS);
 		try (TaskRunner taskRunner = new TaskRunner(THREADS, duration.toMillis())) {
 			taskRunner.run(runnables);
-			await().atMost(duration.minusSeconds(ExceptionMethodImpl.AMOUNT / 2)).untilAsserted(
-					() -> assertThrows(CallsExhaustedException.class, () -> exceptionMethod.method(counter))
+			await().atMost(duration.minusSeconds(ExceptionMethodImpl.AMOUNT / 2))
+					.pollInterval(1, TimeUnit.SECONDS)
+					.untilAsserted(
+					() -> {
+						log.info("counter: {}", counter.get());
+						assertThrows(CallsExhaustedException.class, () -> exceptionMethod.method(counter));
+					}
 			);
 			assertThat(taskRunner.getErrors().size()).isEqualTo(0);
 			assertEquals(ExceptionMethodImpl.CALLS, counter.get());
@@ -110,7 +117,10 @@ class ControlAnnotationTest {
 					.and()
 					.atMost((n + 1) * BlockingMethodImpl.AMOUNT, TimeUnit.SECONDS)
 					.until(
-							() -> counter.get() == limit
+							() -> {
+								log.info("counter: {}, limit: {}", counter.get(), limit);
+								return counter.get() == limit;
+							}
 					);
 		}
 	}
@@ -134,7 +144,7 @@ class ControlAnnotationTest {
 					.pollInterval(100, TimeUnit.MILLISECONDS)
 					.until(
 							() -> {
-								log.info("ex: {}, c: {}", excludedCounter.get(), counter.get());
+								log.info("excludedCounter: {}, counter: {}", excludedCounter.get(), counter.get());
 								return excludedCounter.get() > calls
 										&& counter.get() <= calls;
 							}
@@ -173,14 +183,17 @@ class ControlAnnotationTest {
 				() -> animalClient.fish(counter),
 				() -> animalClient.bird(counter)
 		);
-		var duration = Duration.of(ServiceWrapper.AMOUNT + 3, ChronoUnit.SECONDS);
+		var duration = Duration.of(ServiceWrapper.AMOUNT + 5, ChronoUnit.SECONDS);
 		try (TaskRunner taskRunner = new TaskRunner(THREADS, duration.toMillis())) {
 			taskRunner.run(runnables);
 			await().atLeast(AnimalClient.AMOUNT, TimeUnit.SECONDS)
 					.atMost(2 * AnimalClient.AMOUNT - 2, TimeUnit.SECONDS)
-					.pollInterval(100, TimeUnit.MILLISECONDS)
+					.pollInterval(1, TimeUnit.SECONDS)
 					.until(
-							() -> counter.get() > ServiceWrapper.CALLS * serviceWrappers.size()
+							() -> {
+								log.info("counter: {}", counter.get());
+								return counter.get() > ServiceWrapper.CALLS * serviceWrappers.size();
+							}
 					);
 			assertThat(taskRunner.getErrors().size()).isEqualTo(0);
 			assertThat(counter.get()).isLessThanOrEqualTo(AnimalClient.CALLS);

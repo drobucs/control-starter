@@ -54,6 +54,11 @@ jobs:
                     key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
                     restore-keys: ${{ runner.os }}-m2-
 
+            -   name: Check CPU cores
+                run: |
+                    echo "Number of CPU cores: $(nproc)"
+                    echo "CPU info:"
+                    lscpu
             -   name: Build and Test
                 run: mvn -B clean verify
 
