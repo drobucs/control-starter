@@ -1,6 +1,9 @@
 package ru.drobunind.spring.starter.service;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,7 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @SpringBootTest
 class ControlAnnotationTest {
 	private static final Logger log = LoggerFactory.getLogger(ControlAnnotationTest.class);
-	static final int THREADS = 1;
+	static final int THREADS = 3;
 
 	@Autowired
 	ThreeMethods threeMethods;
@@ -57,6 +60,16 @@ class ControlAnnotationTest {
 
 	@Autowired
 	List<ServiceWrapper<?>> serviceWrappers;
+
+	@BeforeEach
+	void beforeEach(TestInfo testInfo) {
+		log.info("====================== Starting {} ======================", testInfo.getDisplayName());
+	}
+
+	@AfterEach
+	void afterEach(TestInfo testInfo) {
+		log.info("====================== End {} ======================", testInfo.getDisplayName());
+	}
 
 	@Test
 	void testClass() {
@@ -95,11 +108,11 @@ class ControlAnnotationTest {
 			await().atMost(duration.minusSeconds(ExceptionMethodImpl.AMOUNT / 2))
 					.pollInterval(1, TimeUnit.SECONDS)
 					.untilAsserted(
-					() -> {
-						log.info("counter: {}", counter.get());
-						assertThrows(CallsExhaustedException.class, () -> exceptionMethod.method(counter));
-					}
-			);
+							() -> {
+								log.info("counter: {}", counter.get());
+								assertThrows(CallsExhaustedException.class, () -> exceptionMethod.method(counter));
+							}
+					);
 			assertThat(taskRunner.getErrors().size()).isEqualTo(0);
 			assertEquals(ExceptionMethodImpl.CALLS, counter.get());
 		}
@@ -116,6 +129,7 @@ class ControlAnnotationTest {
 			await().atLeast(n * BlockingMethodImpl.AMOUNT, TimeUnit.SECONDS)
 					.and()
 					.atMost((n + 1) * BlockingMethodImpl.AMOUNT, TimeUnit.SECONDS)
+					.pollInterval(1, TimeUnit.SECONDS)
 					.until(
 							() -> {
 								log.info("counter: {}, limit: {}", counter.get(), limit);
