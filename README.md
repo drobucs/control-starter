@@ -1,11 +1,12 @@
 # control-starter
 
-A starter for controlling the number of method calls in a given time period
+A spring starter for controlling the number of method calls in a given time period
 
 [![GitHub Packages](https://img.shields.io/badge/GitHub_Packages-Download-blueviolet?logo=github)](https://github.com/drobucs/control-starter/packages)
+
 [![License](https://img.shields.io/badge/License-MIT-brightgreen)](LICENSE)
 
-
+![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/drobucs/control-starter?)
 ---
 
 ## Installation
@@ -25,7 +26,7 @@ A starter for controlling the number of method calls in a given time period
 <dependency>
     <groupId>ru.drobunind</groupId>
     <artifactId>control-starter</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>${control.starter.version}</version>
 </dependency>
 </dependencies>
 ```
@@ -47,11 +48,6 @@ public interface Client {
 ### Method control
 
 ```java
-import org.springframework.stereotype.Component;
-import ru.drobunind.spring.starter.control.annotation.Control;
-
-import java.util.concurrent.TimeUnit;
-
 @Component
 public class ExternalClient implements Client {
 
@@ -71,11 +67,6 @@ public class ExternalClient implements Client {
 ### Class control
 
 ```java
-import org.springframework.stereotype.Component;
-import ru.drobunind.spring.starter.control.annotation.Control;
-
-import java.util.concurrent.TimeUnit;
-
 @Control(value = 100, timeUnit = TimeUnit.MINUTES)
 @Component
 public class ExternalClient implements Client {
@@ -95,12 +86,6 @@ public class ExternalClient implements Client {
 ### Exclude methods
 
 ```java
-import org.springframework.stereotype.Component;
-import ru.drobunind.spring.starter.control.annotation.Control;
-import ru.drobunind.spring.starter.control.annotation.ControlExclude;
-
-import java.util.concurrent.TimeUnit;
-
 @Control(value = 100, timeUnit = TimeUnit.MINUTES)
 @Component
 public class ExternalClient implements Client {
@@ -117,6 +102,7 @@ public class ExternalClient implements Client {
 	}
 }
 ```
+You can see more examples in the [tests](./src/test/java/ru/drobunind/spring/starter/cases).
 
 ---
 
