@@ -61,16 +61,6 @@ class ControlAnnotationTest {
 	@Autowired
 	List<ServiceWrapper<?>> serviceWrappers;
 
-	@BeforeEach
-	void beforeEach(TestInfo testInfo) {
-		log.info("====================== Starting {} ======================", testInfo.getDisplayName());
-	}
-
-	@AfterEach
-	void afterEach(TestInfo testInfo) {
-		log.info("====================== End {} ======================", testInfo.getDisplayName());
-	}
-
 	@Test
 	void testClass() {
 		AtomicInteger counter = new AtomicInteger();
@@ -213,5 +203,19 @@ class ControlAnnotationTest {
 			assertThat(counter.get()).isLessThanOrEqualTo(AnimalClient.CALLS);
 		}
 
+	}
+
+	void logHead(String text) {
+		log.info("\n\n====================== {} ======================\n\n", text);
+	}
+
+	@BeforeEach
+	void beforeEach(TestInfo testInfo) {
+		logHead("Starting " + testInfo.getDisplayName());
+	}
+
+	@AfterEach
+	void afterEach(TestInfo testInfo) {
+		logHead("Finished " + testInfo.getDisplayName());
 	}
 }
