@@ -2,11 +2,12 @@
 
 A spring starter for controlling the number of method calls in a given time period
 
-[![GitHub Packages](https://img.shields.io/badge/GitHub_Packages-Download-blueviolet?logo=github)](https://github.com/drobucs/control-starter/packages)
+[![Build Status](https://github.com/drobucs/control-starter/actions/workflows/maven-publish.yml/badge.svg)](https://github.com/drobucs/control-starter/actions)
 
 [![License](https://img.shields.io/badge/License-MIT-brightgreen)](LICENSE)
 
 ![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/drobucs/control-starter?)
+
 ---
 
 ## Installation
