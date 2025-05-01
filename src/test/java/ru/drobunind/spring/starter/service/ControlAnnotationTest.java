@@ -2,12 +2,13 @@ package ru.drobunind.spring.starter.service;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.TestInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
 import ru.drobunind.spring.starter.cases.blocking.BlockingMethod;
 import ru.drobunind.spring.starter.cases.blocking.BlockingMethodImpl;
 import ru.drobunind.spring.starter.cases.clazz.ThreeMethods;
@@ -18,8 +19,6 @@ import ru.drobunind.spring.starter.cases.generic.AnimalClient;
 import ru.drobunind.spring.starter.cases.generic.ServiceWrapper;
 import ru.drobunind.spring.starter.cases.method.Method;
 import ru.drobunind.spring.starter.control.exception.CallsExhaustedException;
-import ru.drobunind.spring.starter.utils.TaskRunner;
-import ru.drobunind.spring.starter.utils.TaskRunnerLimit;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
@@ -36,9 +35,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 
 @SpringBootTest
-class ControlAnnotationTest {
+@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
+class ControlAnnotationTest extends BaseTest {
 	private static final Logger log = LoggerFactory.getLogger(ControlAnnotationTest.class);
-	static final int THREADS = 3;
 
 	@Autowired
 	ThreeMethods threeMethods;
@@ -61,7 +60,7 @@ class ControlAnnotationTest {
 	@Autowired
 	List<ServiceWrapper<?>> serviceWrappers;
 
-	@Test
+	@RepeatedTest(5)
 	void testClass() {
 		AtomicInteger counter = new AtomicInteger();
 		List<Runnable> runnables = List.of(
@@ -69,9 +68,8 @@ class ControlAnnotationTest {
 				() -> threeMethods.method2(counter),
 				() -> threeMethods.method3(counter)
 		);
-		var duration = Duration.of(ThreeMethods.AMOUNT + 3, ChronoUnit.SECONDS);
-		try (TaskRunner taskRunner = new TaskRunner(THREADS, duration.toMillis())) {
-			taskRunner.run(runnables);
+		var duration = Duration.of(2 * ThreeMethods.AMOUNT, ChronoUnit.SECONDS);
+		withTaskRunner(duration.toMillis(), runnables, taskRunner -> {
 			await().atLeast(ThreeMethods.AMOUNT, TimeUnit.SECONDS)
 					.atMost(2 * ThreeMethods.AMOUNT - 2, TimeUnit.SECONDS)
 					.pollInterval(1, TimeUnit.SECONDS)
@@ -83,18 +81,17 @@ class ControlAnnotationTest {
 					);
 			assertThat(taskRunner.getErrors().size()).isEqualTo(0);
 			assertThat(counter.get()).isGreaterThan(ThreeMethods.CALLS);
-		}
+		});
 	}
 
-	@Test
+	@RepeatedTest(5)
 	void testThrowsException() {
 		AtomicInteger counter = new AtomicInteger();
 		List<Runnable> runnables = List.of(
 				() -> exceptionMethod.method(counter)
 		);
-		var duration = Duration.of(ExceptionMethodImpl.AMOUNT, ChronoUnit.SECONDS);
-		try (TaskRunner taskRunner = new TaskRunner(THREADS, duration.toMillis())) {
-			taskRunner.run(runnables);
+		var duration = Duration.of(2 * ExceptionMethodImpl.AMOUNT, ChronoUnit.SECONDS);
+		withTaskRunner(duration.toMillis(), runnables, taskRunner -> {
 			await().atMost(duration.minusSeconds(ExceptionMethodImpl.AMOUNT / 2))
 					.pollInterval(1, TimeUnit.SECONDS)
 					.untilAsserted(
@@ -105,17 +102,16 @@ class ControlAnnotationTest {
 					);
 			assertThat(taskRunner.getErrors().size()).isEqualTo(0);
 			assertEquals(ExceptionMethodImpl.CALLS, counter.get());
-		}
+		});
 	}
 
-	@Test
+	@RepeatedTest(5)
 	void testBlocking() {
 		AtomicInteger counter = new AtomicInteger();
 		List<Runnable> runnables = List.of(() -> blockingMethod.method(counter));
 		int n = 2;
 		int limit = n * BlockingMethodImpl.CALLS + 1;
-		try (TaskRunnerLimit taskRunner = new TaskRunnerLimit(THREADS)) {
-			taskRunner.run(runnables, limit);
+		withTaskRunnerLimit(limit, runnables, taskRunner -> {
 			await().atLeast(n * BlockingMethodImpl.AMOUNT, TimeUnit.SECONDS)
 					.and()
 					.atMost((n + 1) * BlockingMethodImpl.AMOUNT, TimeUnit.SECONDS)
@@ -126,7 +122,7 @@ class ControlAnnotationTest {
 								return counter.get() == limit;
 							}
 					);
-		}
+		});
 	}
 
 
@@ -142,8 +138,7 @@ class ControlAnnotationTest {
 				)
 				.toList();
 		long millis = Duration.of(amount, TimeUnit.SECONDS.toChronoUnit()).toMillis();
-		try (TaskRunner taskRunner = new TaskRunner(THREADS, millis)) {
-			taskRunner.run(runnables);
+		withTaskRunner(millis, runnables, taskRunner -> {
 			await().atMost(amount / 2, TimeUnit.SECONDS)
 					.pollInterval(100, TimeUnit.MILLISECONDS)
 					.until(
@@ -154,11 +149,11 @@ class ControlAnnotationTest {
 							}
 					);
 			assertThat(taskRunner.getErrors().size()).isEqualTo(0);
-		}
+		});
 	}
 
 
-	@Test
+	@RepeatedTest(5)
 	void testExclude() {
 		testWithoutControl(
 				List.of(excludeMethod::method),
@@ -168,7 +163,7 @@ class ControlAnnotationTest {
 		);
 	}
 
-	@Test
+	@RepeatedTest(5)
 	void testMethod() {
 		testWithoutControl(
 				List.of(method::controlMethod),
@@ -178,7 +173,7 @@ class ControlAnnotationTest {
 		);
 	}
 
-	@Test
+	@RepeatedTest(5)
 	void testGeneric() {
 		AtomicInteger counter = new AtomicInteger();
 		List<Runnable> runnables = List.of(
@@ -187,9 +182,8 @@ class ControlAnnotationTest {
 				() -> animalClient.fish(counter),
 				() -> animalClient.bird(counter)
 		);
-		var duration = Duration.of(ServiceWrapper.AMOUNT + 5, ChronoUnit.SECONDS);
-		try (TaskRunner taskRunner = new TaskRunner(THREADS, duration.toMillis())) {
-			taskRunner.run(runnables);
+		var duration = Duration.of(2 * AnimalClient.AMOUNT, ChronoUnit.SECONDS);
+		withTaskRunner(duration.toMillis(), runnables, taskRunner -> {
 			await().atLeast(AnimalClient.AMOUNT, TimeUnit.SECONDS)
 					.atMost(2 * AnimalClient.AMOUNT - 2, TimeUnit.SECONDS)
 					.pollInterval(1, TimeUnit.SECONDS)
@@ -201,21 +195,25 @@ class ControlAnnotationTest {
 					);
 			assertThat(taskRunner.getErrors().size()).isEqualTo(0);
 			assertThat(counter.get()).isLessThanOrEqualTo(AnimalClient.CALLS);
-		}
-
-	}
-
-	void logHead(String text) {
-		log.info("\n\n====================== {} ======================\n\n", text);
+		});
 	}
 
 	@BeforeEach
-	void beforeEach(TestInfo testInfo) {
-		logHead("Starting " + testInfo.getDisplayName());
+	void beforeTest(TestInfo testInfo) {
+		logHead(getMethodName(testInfo) + ": " + testInfo.getDisplayName());
 	}
 
 	@AfterEach
 	void afterEach(TestInfo testInfo) {
-		logHead("Finished " + testInfo.getDisplayName());
+		logHead("Finished " + getMethodName(testInfo) + ":" + testInfo.getDisplayName());
+	}
+
+	String getMethodName(TestInfo testInfo) {
+		return testInfo.getTestMethod().map(java.lang.reflect.Method::getName).orElse("[unknown test]");
+	}
+
+	@Override
+	Logger getLogger() {
+		return log;
 	}
 }
