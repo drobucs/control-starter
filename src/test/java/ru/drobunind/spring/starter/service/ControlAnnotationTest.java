@@ -1,5 +1,6 @@
 package ru.drobunind.spring.starter.service;
 
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,7 +59,7 @@ class ControlAnnotationTest {
 	@Autowired
 	List<ServiceWrapper<?>> serviceWrappers;
 
-	@Test
+	@RepeatedTest(5)
 	void testClass() {
 		AtomicInteger counter = new AtomicInteger();
 		List<Runnable> runnables = List.of(
