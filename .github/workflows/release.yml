@@ -6,6 +6,9 @@ on:
             - 'v*'
 
 jobs:
+    build-and-publish:
+        uses: ./.github/workflows/maven-publish.yml
+        secrets: inherit
     create-release:
         runs-on: ubuntu-latest
         permissions:
