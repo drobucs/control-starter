@@ -27,7 +27,7 @@ A spring starter for controlling the number of method calls in a given time peri
 <dependency>
     <groupId>ru.drobunind</groupId>
     <artifactId>control-starter</artifactId>
-    <version>${control.starter.version}</version>
+    <version>${control-starter.version}</version>
 </dependency>
 </dependencies>
 ```
