@@ -3,6 +3,7 @@ package ru.drobunind.spring.starter.control;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -11,9 +12,12 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 
 @Configuration
+@ConfigurationProperties("control")
 public class ControlAutoConfiguration {
 	public final static String BEAN_NAME_THREAD_FACTORY = "controlHandlerThreadFactory";
 	public final static String BEAN_NAME_EXECUTOR_SERVICE = "controlScheduledExecutorService";
+
+	private int poolSize = 2;
 
 	@Bean(BEAN_NAME_THREAD_FACTORY)
 	@ConditionalOnMissingBean(name = BEAN_NAME_THREAD_FACTORY)
@@ -26,7 +30,7 @@ public class ControlAutoConfiguration {
 	public ScheduledExecutorService controlScheduledExecutorService(
 			@Qualifier(BEAN_NAME_THREAD_FACTORY) ThreadFactory controlHandlerThreadFactory
 	) {
-		return Executors.newScheduledThreadPool(100, controlHandlerThreadFactory);
+		return Executors.newScheduledThreadPool(poolSize, controlHandlerThreadFactory);
 	}
 
 	@Bean
@@ -41,5 +45,13 @@ public class ControlAutoConfiguration {
 			ObjectProvider<ControlAnnotationHandler> handler
 	) {
 		return new ControlAnnotationBeanPostProcessor(handler);
+	}
+
+	public void setPoolSize(int poolSize) {
+		this.poolSize = poolSize;
+	}
+
+	public int getPoolSize() {
+		return poolSize;
 	}
 }

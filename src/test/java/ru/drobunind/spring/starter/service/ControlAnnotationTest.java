@@ -1,12 +1,10 @@
 package ru.drobunind.spring.starter.service;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.RepeatedTest;
-import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
 import ru.drobunind.spring.starter.cases.blocking.BlockingMethod;
@@ -18,6 +16,7 @@ import ru.drobunind.spring.starter.cases.exclude.ExcludeMethod;
 import ru.drobunind.spring.starter.cases.generic.AnimalClient;
 import ru.drobunind.spring.starter.cases.generic.ServiceWrapper;
 import ru.drobunind.spring.starter.cases.method.Method;
+import ru.drobunind.spring.starter.control.ControlAutoConfiguration;
 import ru.drobunind.spring.starter.control.exception.CallsExhaustedException;
 
 import java.time.Duration;
@@ -39,6 +38,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class ControlAnnotationTest extends BaseTest {
 	private static final Logger log = LoggerFactory.getLogger(ControlAnnotationTest.class);
 
+	@Value("${control.pool-size}")
+	Integer poolSize;
+
+	@Autowired
+	ControlAutoConfiguration controlAutoConfiguration;
+
 	@Autowired
 	ThreeMethods threeMethods;
 
@@ -59,6 +64,11 @@ class ControlAnnotationTest extends BaseTest {
 
 	@Autowired
 	List<ServiceWrapper<?>> serviceWrappers;
+
+	@Test
+	void testPoolSize() {
+		assertEquals(poolSize, controlAutoConfiguration.getPoolSize());
+	}
 
 	@RepeatedTest(5)
 	void testClass() {
